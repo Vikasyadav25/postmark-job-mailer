@@ -1,0 +1,10 @@
+node_modules/
+.clasp.json
+.clasprc.json
+.env*
+test-results/
+playwright-report/
+artifacts/
+
+# Personal documents do not belong in the application source repository.
+*.pdf

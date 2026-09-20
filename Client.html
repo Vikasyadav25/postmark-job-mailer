@@ -1,0 +1,392 @@
+<script>
+  (() => {
+    "use strict";
+    const $ = (id) => document.getElementById(id);
+    const state = {
+      app: null,
+      dirty: false,
+      review: null,
+      sending: false,
+      sendAttempted: false,
+    };
+    const rpc = (method, ...args) => {
+      if (window.POSTMARK_DEMO)
+        return window.POSTMARK_DEMO.call(method, ...args);
+      return new Promise((resolve, reject) => {
+        if (!window.google?.script?.run)
+          return reject(
+            new Error("Open your deployed Apps Script URL to use this app."),
+          );
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(reject)
+          [method](...args);
+      });
+    };
+    const errorText = (error) =>
+      error?.message || "Something went wrong. Please try again.";
+    function notify(message, error = false) {
+      $("notice").textContent = message;
+      $("notice").classList.toggle("error", error);
+      $("notice").hidden = !message;
+    }
+    function view(name) {
+      document.querySelectorAll(".view").forEach((el) => {
+        el.hidden = el.id !== "view-" + name;
+      });
+      document.querySelectorAll("[data-view]").forEach((el) => {
+        const active = el.dataset.view === name;
+        el.classList.toggle("active", active);
+        if (active) el.setAttribute("aria-current", "page");
+        else el.removeAttribute("aria-current");
+      });
+    }
+    const sizeLabel = (size) =>
+      size < 1048576
+        ? Math.ceil(size / 1024) + " KB"
+        : (size / 1048576).toFixed(1) + " MB";
+    function renderResume() {
+      const resume = state.app.resume;
+      $("resume-name").textContent = resume?.name || "No resume yet";
+      $("resume-meta").textContent = resume
+        ? sizeLabel(resume.size) + " · Ready to attach"
+        : "Upload a PDF in Settings";
+      $("resume-check").hidden = !resume;
+      $("settings-resume").textContent = resume
+        ? resume.name + " · " + sizeLabel(resume.size)
+        : "No resume uploaded.";
+      $("remove-resume").hidden = !resume;
+    }
+    function populateTemplate() {
+      if (!state.app.template.name) return;
+      const values = {
+        name: state.app.template.name,
+        company: $("company").value.trim() || "your company",
+        role: $("role").value.trim() || "a suitable opportunity",
+      };
+      const fill = (text) =>
+        text.replace(/{{\s*(name|company|role)\s*}}/g, (_, key) => values[key]);
+      $("subject").value = fill(state.app.template.subject);
+      $("body").value = fill(state.app.template.body);
+      state.dirty = false;
+    }
+    function renderHistory() {
+      $("usage").textContent =
+        state.app.todayCount +
+        " / " +
+        state.app.dailyLimit +
+        " attempts in the last 24 hours";
+      const list = $("history-list");
+      list.replaceChildren();
+      if (!state.app.history.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty-state";
+        empty.textContent =
+          "A fresh start. Your applications will appear here after you send them.";
+        list.append(empty);
+      }
+      state.app.history.forEach((item) => {
+        const row = document.createElement("article");
+        row.className = "history-item";
+        const info = document.createElement("div");
+        const recipient = document.createElement("strong");
+        recipient.textContent = item.to;
+        const subject = document.createElement("p");
+        subject.textContent = item.subject;
+        const time = document.createElement("time");
+        time.dateTime = new Date(item.at).toISOString();
+        time.textContent = new Date(item.at).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        });
+        const status = document.createElement("span");
+        status.className =
+          "history-status" + (item.status === "sent" ? "" : " uncertain");
+        status.textContent = item.status === "sent" ? "✓ Sent" : "Check Gmail";
+        info.append(recipient, subject, time);
+        row.append(info, status);
+        list.append(row);
+      });
+    }
+    async function refreshHistory() {
+      try {
+        const latest = await rpc("getAppState");
+        state.app.history = latest.history;
+        state.app.todayCount = latest.todayCount;
+        renderHistory();
+      } catch (_) {
+        /* The outcome remains visible even when a history refresh fails. */
+      }
+    }
+    function renderAccount() {
+      $("account-email").textContent = state.app.email;
+      $("sender-name").textContent =
+        state.app.template.name || "Your Gmail account";
+      $("sender-email").textContent = state.app.email;
+      $("sender-initial").textContent = (
+        state.app.template.name || state.app.email
+      )
+        .charAt(0)
+        .toUpperCase();
+    }
+    async function busy(button, label, task) {
+      if (button.disabled) return;
+      const original = button.textContent;
+      button.disabled = true;
+      button.textContent = label;
+      try {
+        await task();
+      } catch (error) {
+        notify(errorText(error), true);
+      } finally {
+        button.disabled = false;
+        button.textContent = original;
+      }
+    }
+    document
+      .querySelectorAll("[data-view]")
+      .forEach((button) =>
+        button.addEventListener("click", () => view(button.dataset.view)),
+      );
+    document.querySelector(".brand").addEventListener("click", (event) => {
+      event.preventDefault();
+      view("compose");
+    });
+    $("manage-resume").addEventListener("click", () => {
+      view("settings");
+      $("resume-file").focus();
+    });
+    ["subject", "body"].forEach((id) =>
+      $(id).addEventListener("input", () => {
+        state.dirty = true;
+      }),
+    );
+    ["company", "role"].forEach((id) =>
+      $(id).addEventListener("input", () => {
+        if (!state.dirty) populateTemplate();
+        else
+          notify(
+            "Your edited message has been kept. Update it manually, or use “Reset to template” to fill in the new details.",
+          );
+      }),
+    );
+    $("reset-template").addEventListener("click", () => {
+      if (!state.app.template.name) {
+        view("settings");
+        $("template-name").focus();
+        return;
+      }
+      if (
+        !state.dirty ||
+        window.confirm("Replace your edits with the saved template?")
+      ) {
+        populateTemplate();
+        notify("Template applied.");
+      }
+    });
+    $("settings-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      busy($("save-template"), "Saving…", async () => {
+        state.app.template = await rpc("saveTemplate", {
+          name: $("template-name").value,
+          subject: $("template-subject").value,
+          body: $("template-body").value,
+        });
+        renderAccount();
+        if (!state.dirty) populateTemplate();
+        notify("Template saved. You’re ready to make it personal.");
+      });
+    });
+    $("resume-file").addEventListener("change", async (event) => {
+      const input = event.target;
+      const file = input.files[0];
+      if (!file) return;
+      if (
+        !/\.pdf$/i.test(file.name) ||
+        file.size > 5 * 1024 * 1024 ||
+        file.size === 0
+      ) {
+        notify("Choose a PDF resume no larger than 5 MB.", true);
+        input.value = "";
+        return;
+      }
+      input.disabled = true;
+      $("remove-resume").disabled = true;
+      notify("Saving your resume…");
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result).split(",")[1]);
+          reader.onerror = () =>
+            reject(
+              new Error("Could not read this file. Please choose it again."),
+            );
+          reader.readAsDataURL(file);
+        });
+        const result = await rpc("uploadResume", { name: file.name, base64 });
+        state.app.resume = result.resume;
+        renderResume();
+        notify(
+          result.warning ||
+            "Resume saved. It will be attached to your applications.",
+          Boolean(result.warning),
+        );
+      } catch (error) {
+        notify(errorText(error), true);
+      } finally {
+        input.disabled = false;
+        $("remove-resume").disabled = false;
+        input.value = "";
+      }
+    });
+    $("remove-resume").addEventListener("click", () => {
+      if (
+        !window.confirm(
+          "Remove this saved resume and move its app-created copy to Drive trash?",
+        )
+      )
+        return;
+      busy($("remove-resume"), "Removing…", async () => {
+        await rpc("removeResume");
+        state.app.resume = null;
+        renderResume();
+        notify("Saved resume removed.");
+      });
+    });
+    $("review-button").addEventListener("click", () => {
+      if (!$("recipient").reportValidity()) return;
+      busy($("review-button"), "Preparing…", async () => {
+        const draft = await rpc("prepareDraft", {
+          to: $("recipient").value.trim(),
+          subject: $("subject").value,
+          body: $("body").value,
+        });
+        state.review = draft;
+        state.sendAttempted = false;
+        ["from", "to", "subject", "body"].forEach((key) => {
+          $("review-" + key).textContent = draft[key];
+        });
+        $("review-resume").textContent =
+          draft.resume.name + " · " + sizeLabel(draft.resume.size);
+        $("send-status").textContent = "";
+        $("send-button").disabled = Boolean(window.POSTMARK_DEMO);
+        $("send-button").textContent = window.POSTMARK_DEMO
+          ? "Sending disabled in preview"
+          : "Send email ↗";
+        $("edit-email").textContent = "Back to editing";
+        if (window.POSTMARK_DEMO)
+          $("send-status").textContent =
+            "This is a local preview. Deploy to your Google account to send email.";
+        $("review-dialog").showModal();
+        $("edit-email").focus();
+      });
+    });
+    function closeReview() {
+      if (!state.sending) $("review-dialog").close();
+    }
+    $("close-review").addEventListener("click", closeReview);
+    $("edit-email").addEventListener("click", closeReview);
+    $("review-dialog").addEventListener("cancel", (event) => {
+      if (state.sending) event.preventDefault();
+    });
+    $("review-dialog").addEventListener("close", () => {
+      $("review-button").focus();
+    });
+    $("send-button").addEventListener("click", async () => {
+      if (
+        !state.review ||
+        state.sending ||
+        state.sendAttempted ||
+        window.POSTMARK_DEMO
+      )
+        return;
+      state.sending = true;
+      state.sendAttempted = true;
+      $("send-button").disabled = true;
+      $("close-review").disabled = true;
+      $("edit-email").disabled = true;
+      $("send-button").textContent = "Sending…";
+      $("send-status").textContent =
+        "Submitting once to Gmail. Please keep this window open.";
+      try {
+        const result = await rpc("sendDraft", state.review.id);
+        if (result.status === "sent") {
+          $("send-status").textContent =
+            "Sent from " +
+            state.app.email +
+            " to " +
+            result.to +
+            ". You can find it in Gmail Sent.";
+          $("send-button").textContent = "Sent ✓";
+          notify(
+            "Your introduction is on its way. Email sent to " + result.to + ".",
+          );
+          $("recipient").value = "";
+          $("company").value = "";
+          $("role").value = "";
+          populateTemplate();
+        } else {
+          $("send-status").textContent =
+            "Gmail did not confirm the outcome. Check your Sent folder before creating another application. This app will not retry this send.";
+          $("send-button").textContent = "Check Gmail Sent";
+          notify(
+            "Send outcome uncertain. Check Gmail Sent before trying again.",
+            true,
+          );
+        }
+        await refreshHistory();
+      } catch (error) {
+        $("send-status").textContent =
+          errorText(error) +
+          " If submission may have started, check Gmail Sent before trying again. No automatic retry will occur.";
+        $("send-button").textContent = "Send not confirmed";
+      } finally {
+        state.sending = false;
+        $("close-review").disabled = false;
+        $("edit-email").disabled = false;
+        $("edit-email").textContent = "Close";
+      }
+    });
+    window.addEventListener("beforeunload", (event) => {
+      if (state.sending) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    });
+    async function init() {
+      try {
+        state.app = await rpc("getAppState");
+        $("template-name").value = state.app.template.name;
+        $("template-subject").value = state.app.template.subject;
+        $("template-body").value = state.app.template.body;
+        renderAccount();
+        renderResume();
+        renderHistory();
+        populateTemplate();
+        $("workspace").hidden = false;
+        if (window.POSTMARK_DEMO) $("demo-banner").hidden = false;
+        else if (!state.app.template.name || !state.app.resume) {
+          view("settings");
+          notify(
+            "Welcome. Save your name, customize your template, and upload a PDF resume to get started.",
+          );
+        } else if (state.app.history.some((item) => item.status !== "sent")) {
+          notify(
+            "A recent send has an uncertain outcome. Check Recent activity and Gmail Sent before resending it.",
+            true,
+          );
+        }
+      } catch (error) {
+        notify(
+          errorText(error) + " Reload this page after resolving the issue.",
+          true,
+        );
+      } finally {
+        $("loading").hidden = true;
+      }
+    }
+    init();
+  })();
+</script>

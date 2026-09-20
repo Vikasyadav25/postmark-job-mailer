@@ -1,0 +1,13 @@
+{
+  "name": "postmark-personal-job-mailer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A private Google Apps Script app for reviewed, one-at-a-time job applications.",
+  "scripts": {
+    "preview": "node scripts/preview.mjs",
+    "test": "node --test tests/server.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

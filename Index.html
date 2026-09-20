@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <base target="_top" />
+    <meta charset="UTF-8" />
+    <meta name="color-scheme" content="light" />
+    <?!= include_('Styles'); ?>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Postmark home"
+          ><span class="brand-mark" aria-hidden="true">↗</span> postmark<span
+            class="brand-dot"
+            >.</span
+          ></a
+        >
+        <span class="private-label"
+          ><span class="status-dot"></span> Your private workspace</span
+        >
+      </header>
+      <div id="demo-banner" class="demo-banner" hidden>
+        LOCAL PREVIEW · Sample data only. Email sending is disabled.
+      </div>
+      <main>
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">
+              A LITTLE LESS ADMIN. A LITTLE MORE POSSIBILITY.
+            </p>
+            <h1>Your next chapter<br />starts with an email<span>.</span></h1>
+            <p class="intro">
+              The opportunity is out there. Make your introduction.
+            </p>
+          </div>
+          <div class="chapter-art" aria-hidden="true">
+            <span class="art-orbit"></span>
+            <div class="art-envelope"><span>↗</span></div>
+            <span class="art-star">✳</span>
+          </div>
+        </div>
+        <nav class="tabs" aria-label="Workspace">
+          <button
+            type="button"
+            class="tab active"
+            data-view="compose"
+            aria-current="page"
+          >
+            Compose <span>↗</span>
+          </button>
+          <button type="button" class="tab" data-view="activity">
+            Recent activity
+          </button>
+          <button type="button" class="tab" data-view="settings">
+            Settings
+          </button>
+        </nav>
+        <div
+          id="notice"
+          class="notice"
+          role="status"
+          aria-live="polite"
+          hidden
+        ></div>
+        <div id="loading" class="loading">Opening your workspace…</div>
+        <div id="workspace" hidden>
+          <section
+            id="view-compose"
+            class="view"
+            aria-label="Compose application"
+          >
+            <div class="compose-grid">
+              <div class="recipient-column">
+                <section class="card recipient-card">
+                  <div class="section-label">
+                    <span class="step">01</span> THE OPPORTUNITY
+                  </div>
+                  <h2>Who’s on the other end?</h2>
+                  <p class="muted">Paste an email. Add the details you know.</p>
+                  <label for="recipient"
+                    >Recipient email <span class="required">*</span></label
+                  >
+                  <input
+                    id="recipient"
+                    type="email"
+                    autocomplete="off"
+                    inputmode="email"
+                    autocapitalize="none"
+                    spellcheck="false"
+                    maxlength="254"
+                    placeholder="recruiter@company.com"
+                    required
+                  />
+                  <div class="field-row">
+                    <div>
+                      <label for="company"
+                        >Company <span class="optional">optional</span></label
+                      ><input
+                        id="company"
+                        maxlength="100"
+                        placeholder="e.g. Notion"
+                        autocomplete="organization"
+                      />
+                    </div>
+                    <div>
+                      <label for="role"
+                        >Role <span class="optional">optional</span></label
+                      ><input
+                        id="role"
+                        maxlength="100"
+                        placeholder="e.g. Product designer"
+                        autocomplete="off"
+                      />
+                    </div>
+                  </div>
+                  <p class="field-hint">
+                    Your template fills in the details automatically.
+                  </p>
+                </section>
+                <section class="card resume-card">
+                  <div class="resume-heading">
+                    <div class="section-label">
+                      <span class="step">02</span> YOUR RESUME
+                    </div>
+                    <button
+                      class="text-button"
+                      type="button"
+                      id="manage-resume"
+                    >
+                      Manage ↗
+                    </button>
+                  </div>
+                  <div class="file-row">
+                    <span class="pdf-icon" aria-hidden="true">PDF</span>
+                    <div class="file-details">
+                      <strong id="resume-name">No resume yet</strong
+                      ><span id="resume-meta">Upload a PDF in Settings</span>
+                    </div>
+                    <span
+                      id="resume-check"
+                      class="file-check"
+                      hidden
+                      aria-label="Ready"
+                      >✓</span
+                    >
+                  </div>
+                  <p class="attachment-note">
+                    <span aria-hidden="true">↳</span> Attached to every
+                    application, automatically.
+                  </p>
+                </section>
+                <aside class="quiet-note">
+                  <span aria-hidden="true">✧</span>
+                  <p>
+                    A thoughtful introduction goes a long way.<br />Give your
+                    message a quick read before sending.
+                  </p>
+                </aside>
+              </div>
+              <section class="card email-card">
+                <div class="email-card-heading">
+                  <div class="section-label">
+                    <span class="step">03</span> MAKE IT PERSONAL
+                  </div>
+                  <span class="editable-badge">Editable preview</span>
+                </div>
+                <div class="sender-line">
+                  <span class="avatar" id="sender-initial" aria-hidden="true"
+                    >—</span
+                  >
+                  <div>
+                    <strong id="sender-name">Your Gmail account</strong
+                    ><span id="sender-email"></span>
+                  </div>
+                  <span class="gmail-badge">via Gmail</span>
+                </div>
+                <label class="subject-label" for="subject">Subject</label
+                ><input
+                  id="subject"
+                  class="subject-input"
+                  maxlength="200"
+                  placeholder="Your application subject"
+                />
+                <label class="sr-only" for="body">Email message</label
+                ><textarea
+                  id="body"
+                  class="message-input"
+                  maxlength="10000"
+                  spellcheck="true"
+                  placeholder="Save your name and template in Settings to get started."
+                ></textarea>
+                <div class="email-tools">
+                  <span
+                    ><span class="status-dot"></span> Plain text. Personally
+                    sent.</span
+                  ><button
+                    type="button"
+                    class="text-button"
+                    id="reset-template"
+                  >
+                    Reset to template
+                  </button>
+                </div>
+                <div class="send-footer">
+                  <p>
+                    You’re always in control.<br /><strong
+                      >Nothing sends until you say so.</strong
+                    >
+                  </p>
+                  <button
+                    type="button"
+                    class="button primary"
+                    id="review-button"
+                  >
+                    Review email <span aria-hidden="true">↗</span>
+                  </button>
+                </div>
+              </section>
+            </div>
+          </section>
+          <section
+            id="view-activity"
+            class="view"
+            aria-labelledby="activity-title"
+            hidden
+          >
+            <div class="card activity-card">
+              <div class="section-label">YOUR SMALL STEPS FORWARD</div>
+              <h2 id="activity-title">Recent activity</h2>
+              <p class="muted">
+                Your latest 10 attempts from the last 7 days. Confirm delivery
+                status in Gmail.
+              </p>
+              <div id="history-list"></div>
+            </div>
+          </section>
+          <section
+            id="view-settings"
+            class="view"
+            aria-labelledby="settings-title"
+            hidden
+          >
+            <div class="settings-grid">
+              <form id="settings-form" class="card settings-card">
+                <div class="section-label">SET UP ONCE. MAKE IT YOURS.</div>
+                <h2 id="settings-title">Your email template</h2>
+                <p class="muted">
+                  Signed in as <strong id="account-email"></strong>
+                </p>
+                <p class="muted">A starting point for every introduction.</p>
+                <label for="template-name">Your full name</label
+                ><input
+                  id="template-name"
+                  maxlength="100"
+                  autocomplete="name"
+                  required
+                  placeholder="Your name"
+                />
+                <label for="template-subject">Subject template</label
+                ><input id="template-subject" maxlength="200" required />
+                <label for="template-body">Message template</label
+                ><textarea
+                  id="template-body"
+                  rows="12"
+                  maxlength="5000"
+                  required
+                ></textarea>
+                <p class="field-hint">
+                  Available placeholders: <code>{{name}}</code>,
+                  <code>{{company}}</code>, <code>{{role}}</code>.<br />Empty
+                  company becomes “your company”; empty role becomes “a suitable
+                  opportunity”.
+                </p>
+                <button class="button primary" type="submit" id="save-template">
+                  Save template <span aria-hidden="true">✓</span>
+                </button>
+              </form>
+              <div>
+                <section class="card settings-card">
+                  <div class="section-label">READY WHEN YOU ARE</div>
+                  <h2>Saved resume</h2>
+                  <p class="muted">
+                    One PDF, up to 5 MB. Stored privately in your Google Drive
+                    and available across your devices.
+                  </p>
+                  <p id="settings-resume" class="saved-resume">
+                    No resume uploaded.
+                  </p>
+                  <label class="upload-area" for="resume-file"
+                    ><span aria-hidden="true">↑</span
+                    ><strong>Choose a PDF resume</strong
+                    ><small>Uploading replaces the saved resume.</small
+                    ><input
+                      id="resume-file"
+                      type="file"
+                      accept="application/pdf,.pdf" /></label
+                  ><button
+                    type="button"
+                    class="text-button danger"
+                    id="remove-resume"
+                    hidden
+                  >
+                    Remove saved resume
+                  </button>
+                </section>
+                <aside class="privacy-card">
+                  <h3>Just you and your next opportunity.</h3>
+                  <p>
+                    Your template and activity are saved separately for your
+                    Google account. Your resume stays in your Drive. Email goes
+                    through your own Gmail account.
+                  </p>
+                  <p>
+                    This app cannot read your inbox. No tracking pixels,
+                    analytics, AI services, or subscriptions.
+                  </p>
+                </aside>
+              </div>
+            </div>
+          </section>
+        </div>
+        <footer class="page-footer">
+          <span>Made for your next move.</span
+          ><span id="usage">One thoughtful email at a time.</span>
+        </footer>
+      </main>
+    </div>
+    <dialog id="review-dialog" aria-labelledby="review-title">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">ONE LAST LOOK</p>
+          <h2 id="review-title">Ready to make your introduction?</h2>
+        </div>
+        <button
+          type="button"
+          class="close-button"
+          id="close-review"
+          aria-label="Close review"
+        >
+          ×
+        </button>
+      </div>
+      <div class="review-content">
+        <dl class="review-details">
+          <div>
+            <dt>From</dt>
+            <dd id="review-from"></dd>
+          </div>
+          <div>
+            <dt>To</dt>
+            <dd id="review-to"></dd>
+          </div>
+          <div>
+            <dt>Subject</dt>
+            <dd id="review-subject"></dd>
+          </div>
+        </dl>
+        <pre id="review-body"></pre>
+        <div class="review-attachment">
+          <span class="pdf-icon" aria-hidden="true">PDF</span
+          ><span id="review-resume"></span>
+        </div>
+        <p class="field-hint">
+          This exact message and resume will be sent. Review expires in 10
+          minutes.
+        </p>
+        <p id="send-status" role="status" aria-live="polite"></p>
+      </div>
+      <div class="dialog-footer">
+        <button type="button" class="button secondary" id="edit-email">
+          Back to editing</button
+        ><button type="button" class="button primary" id="send-button">
+          Send email <span aria-hidden="true">↗</span>
+        </button>
+      </div>
+    </dialog>
+    <?!= include_('Client'); ?>
+  </body>
+</html>
